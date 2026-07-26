@@ -30,7 +30,7 @@ impl NetworkCoordinator {
         if let Ok(ascii_str) = std::str::from_utf8(raw_bytes) {
             if ascii_str.starts_with("OPENTAP_UNLOCK_PAYLOAD_V1:") {
                 let store = self.store.lock().unwrap();
-                let device_name = store.list_devices().first().map(|d| d.device_name.clone()).unwrap_or_else(|| "Chara's Pixel 8 Pro".to_string());
+                let device_name = store.devices.values().next().map(|d| d.device_name.clone()).unwrap_or_else(|| "Chara's Pixel 8 Pro".to_string());
                 
                 println!("\n====================================================================");
                 println!("  ⚡ OPENTAP UNLOCK: TRIPLETAP VERIFIED FROM CHARA'S MOBILE! ⚡  ");
