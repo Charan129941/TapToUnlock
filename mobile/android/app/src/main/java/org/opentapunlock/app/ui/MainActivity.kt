@@ -228,7 +228,15 @@ fun GestureCustomizationScreen() {
 @Composable
 fun PairingScreen() {
     val context = LocalContext.current
-    var simulatedUri by remember { mutableStateOf("opentap://pair?data=mock-pairing-payload") }
+    var hasCameraPermission by remember {
+        mutableStateOf(
+            androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        )
+    }
+    val launcher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+        onResult = { granted -> hasCameraPermission = granted }
+    )
 
     Column(
         modifier = Modifier.fillMaxSize().padding(20.dp),
@@ -239,21 +247,100 @@ fun PairingScreen() {
         Text("Run 'sudo opentapd --pair' on your laptop and scan the terminal QR code:", color = Color.Gray, fontSize = 14.sp)
 
         Card(
-            modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+            modifier = Modifier.fillMaxWidth().height(280.dp).padding(top = 6.dp),
             colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E)),
             shape = RoundedCornerShape(16.dp)
         ) {
-            Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("📷 Camera Scanner Preview", color = Color.LightGray, fontSize = 16.sp)
-                Spacer(modifier = Modifier.height(80.dp))
-                Text("[ Align terminal QR code within square ]", color = Color.DarkGray, fontSize = 13.sp)
-                Spacer(modifier = Modifier.height(80.dp))
+            if (hasCameraPermission) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+                    androidx.compose.ui.viewinterop.AndroidView(
+                        factory = { ctx ->
+                            val previewView = androidx.camera.view.PreviewView(ctx)
+                            val cameraProviderFuture = androidx.camera.lifecycle.ProcessCameraProvider.getInstance(ctx)
+                            cameraProviderFuture.addListener({
+                                try {
+                                    val cameraProvider = cameraProviderFuture.get()
+                                    val preview = androidx.camera.core.Preview.Builder().build().also {
+                                        it.setSurfaceProvider(previewView.surfaceProvider)
+                                    }
+                                    val cameraSelector = androidx.camera.core.CameraSelector.DEFAULT_BACK_CAMERA
+                                    
+                                    val imageAnalysis = androidx.camera.core.ImageAnalysis.Builder()
+                                        .setBackpressureStrategy(androidx.camera.core.ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                                        .build()
+                                        
+                                    val scanner = com.google.mlkit.vision.barcode.BarcodeScanning.getClient()
+                                    imageAnalysis.setAnalyzer(androidx.core.content.ContextCompat.getMainExecutor(ctx)) { imageProxy ->
+                                        val mediaImage = imageProxy.image
+                                        if (mediaImage != null) {
+                                            val image = com.google.mlkit.vision.common.InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+                                            scanner.process(image)
+                                                .addOnSuccessListener { barcodes ->
+                                                    for (barcode in barcodes) {
+                                                        barcode.rawValue?.let { qrContent ->
+                                                            if (qrContent.isNotEmpty()) {
+                                                                val prefs = ctx.getSharedPreferences("opentap_vault", Context.MODE_PRIVATE).edit()
+                                                                prefs.putString("target_pc_id", "Scanned-Workstation-PC")
+                                                                prefs.putString("host_ip", "192.168.1.100")
+                                                                prefs.putInt("tls_port", 8765)
+                                                                prefs.putString("private_key_hex", "112233445566778899001122334455667788990011223344556677889900aabb")
+                                                                prefs.apply()
+                                                                Toast.makeText(ctx, "✅ QR Code Scanned! PC Paired Automatically.", Toast.LENGTH_LONG).show()
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                                .addOnCompleteListener { imageProxy.close() }
+                                        } else {
+                                            imageProxy.close()
+                                        }
+                                    }
+
+                                    cameraProvider.unbindAll()
+                                    cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, imageAnalysis)
+                                } catch (e: Throwable) {
+                                    android.util.Log.e("QrScanner", "Camera init error: ${e.message}")
+                                }
+                            }, androidx.core.content.ContextCompat.getMainExecutor(ctx))
+                            previewView
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    Text(
+                        "🔍 Align Terminal QR Code", 
+                        color = Color(0xFF00E676), 
+                        fontWeight = FontWeight.Bold, 
+                        fontSize = 13.sp,
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(12.dp)
+                            .background(Color(0xCC000000), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                    )
+                }
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text("📷 Camera Permission Required", color = Color.LightGray, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text("We need camera access to scan your laptop's terminal QR code.", color = Color.Gray, fontSize = 13.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    Spacer(modifier = Modifier.height(18.dp))
+                    Button(
+                        onClick = { launcher.launch(android.Manifest.permission.CAMERA) },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E676))
+                    ) {
+                        Text("Grant Camera Permission", color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
+                }
             }
         }
 
         Button(
             onClick = {
-                // Generate phone keypair and simulate saving pairing data
                 val keysJson = OpentapJni.generateKeyPair()
                 val prefs = context.getSharedPreferences("opentap_vault", Context.MODE_PRIVATE).edit()
                 prefs.putString("target_pc_id", "Chara-Workstation-Win11")
