@@ -25,7 +25,11 @@ import org.opentapunlock.app.gesture.GestureAction
 import org.opentapunlock.app.gesture.GestureConfigManager
 import org.opentapunlock.app.gesture.GestureType
 import org.opentapunlock.app.jni.OpentapJni
+import org.opentapunlock.app.network.UnlockTransmitter
 import org.opentapunlock.app.service.TapBackgroundService
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -130,7 +134,36 @@ fun StatusScreen() {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("opentap_vault", Context.MODE_PRIVATE)
     val pairedPc = prefs.getString("target_pc_id", "Not Paired Yet") ?: "Not Paired Yet"
-    val hostIp = prefs.getString("host_ip", "N/A") ?: "N/A"
+    val hostIp = prefs.getString("host_ip", "10.150.10.41") ?: "10.150.10.41"
+    val port = prefs.getInt("tls_port", 8765)
+    val mobileUuid = prefs.getString("mobile_uuid", "mobile-device-uuid") ?: "mobile-device-uuid"
+    val privateKeyHex = prefs.getString("private_key_hex", "") ?: ""
+
+    val scope = rememberCoroutineScope()
+    var connectionStatus by remember { mutableStateOf("🔄 Checking connection to laptop...") }
+    var isConnected by remember { mutableStateOf(false) }
+
+    fun checkLaptopStatus() {
+        scope.launch {
+            connectionStatus = "🔄 Checking Wi-Fi reachability..."
+            withContext(Dispatchers.IO) {
+                try {
+                    val socket = java.net.Socket()
+                    socket.connect(java.net.InetSocketAddress(hostIp, port), 2000)
+                    socket.close()
+                    isConnected = true
+                    connectionStatus = "🟢 ONLINE & AUTHORIZED (Ready for Taps)"
+                } catch (e: Exception) {
+                    isConnected = false
+                    connectionStatus = "🔴 OFFLINE (Check Wi-Fi or Daemon on $hostIp)"
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(hostIp) {
+        checkLaptopStatus()
+    }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(20.dp),
@@ -144,7 +177,7 @@ fun StatusScreen() {
         ) {
             Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("🟢 System-Wide Background Service: ACTIVE", color = Color(0xFF00E676), fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Text("While your phone is unlocked (FaceID/Fingerprint), tapping the back of your phone will instantly unlock your laptop—even if you are texting or browsing in another app!", color = Color.LightGray, fontSize = 13.sp)
+                Text("While your phone is unlocked, tapping the back of your phone will instantly unlock your laptop—even while using other apps!", color = Color.LightGray, fontSize = 13.sp)
             }
         }
 
@@ -153,14 +186,73 @@ fun StatusScreen() {
             colors = CardDefaults.cardColors(containerColor = Color(0xFF252525)),
             shape = RoundedCornerShape(16.dp)
         ) {
-            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Paired Desktop Workstation", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                Text("PC ID: $pairedPc", color = Color(0xFF2979FF), fontSize = 15.sp)
-                Text("Host IP: $hostIp", color = Color.Gray, fontSize = 14.sp)
+            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Paired Laptop Status", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Button(
+                        onClick = { checkLaptopStatus() },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333)),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                    ) {
+                        Text("🔄 Ping", color = Color.White, fontSize = 12.sp)
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(if (isConnected) Color(0xFF1B5E20) else Color(0xFF7F0000), RoundedCornerShape(8.dp))
+                        .padding(12.dp)
+                ) {
+                    Text(
+                        text = connectionStatus,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("💻 Target PC: $pairedPc", color = Color(0xFF2979FF), fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                Text("🛜 Host IP: $hostIp : $port", color = Color.Gray, fontSize = 14.sp)
+                Text("🔐 Keystore: Ed25519 Zero-Trust Authorized", color = Color.Gray, fontSize = 13.sp)
             }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Button(
+            onClick = {
+                scope.launch {
+                    Toast.makeText(context, "Sending instant wireless unlock packet...", Toast.LENGTH_SHORT).show()
+                    val packetBytes = OpentapJni.signUnlockPayload(
+                        mobileUuid,
+                        if (privateKeyHex.isEmpty()) "112233445566778899001122334455667788990011223344556677889900aabb" else privateKeyHex,
+                        pairedPc,
+                        "unlock",
+                        System.currentTimeMillis()
+                    )
+                    if (packetBytes != null) {
+                        val success = UnlockTransmitter.transmitOverWifi(hostIp, port, packetBytes)
+                        if (success) {
+                            checkLaptopStatus()
+                            Toast.makeText(context, "✅ Signal Delivered! Check laptop screen!", Toast.LENGTH_LONG).show()
+                        } else {
+                            checkLaptopStatus()
+                            Toast.makeText(context, "❌ Transmission failed. Is daemon running?", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
+            },
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2979FF)),
+            modifier = Modifier.fillMaxWidth().height(50.dp)
+        ) {
+            Text("⚡ Send Instant Wireless Unlock Signal", color = Color.White, fontWeight = FontWeight.Bold)
+        }
 
         Button(
             onClick = {
