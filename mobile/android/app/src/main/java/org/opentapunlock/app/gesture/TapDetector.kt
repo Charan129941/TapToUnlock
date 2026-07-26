@@ -18,10 +18,10 @@ interface GestureDetectionListener {
 class TapDetector(private val listener: GestureDetectionListener) : SensorEventListener {
     companion object {
         private const val TAG = "TapDetector"
-        private const val TAP_THRESHOLD_MS2 = 11.5f // Acceleration magnitude threshold for back tap impulse
-        private const val LONG_TAP_THRESHOLD_MS2 = 8.5f
-        private const val MIN_TAP_INTERVAL_MS = 120L // Debounce window
-        private const val MAX_TAP_WINDOW_MS = 1000L // Max time window for multi-taps
+        private const val TAP_THRESHOLD_MS2 = 3.2f // Sensitive threshold for comfortable average finger taps
+        private const val LONG_TAP_THRESHOLD_MS2 = 2.8f
+        private const val MIN_TAP_INTERVAL_MS = 100L // Debounce window
+        private const val MAX_TAP_WINDOW_MS = 1200L // Widen window for relaxed multi-taps
     }
 
     private val tapTimestamps = mutableListOf<Long>()
@@ -81,14 +81,13 @@ class TapDetector(private val listener: GestureDetectionListener) : SensorEventL
                 listener.onGestureDetected(GestureType.TRIPLE_TAP)
             }
             2 -> {
-                // If 2 taps arrived with longer spacing (~400-600ms), we check for long taps or schedule double tap
                 val interval = tapTimestamps[1] - tapTimestamps[0]
-                if (interval in 450..850) {
+                if (interval > 600) {
                     Log.i(TAG, "DSP DETECTED GESTURE: Two Long Taps!")
                     tapTimestamps.clear()
                     listener.onGestureDetected(GestureType.TWO_LONG_TAPS)
-                } else if (interval < 450) {
-                    // Could be start of triple tap; we let the window evaluate or trigger double tap if no 3rd arrives
+                } else {
+                    // Could be start of triple tap; let the window evaluate or trigger double tap if no 3rd arrives
                     Log.d(TAG, "DSP detected 2 taps (interval: ${interval}ms), waiting for potential 3rd tap...")
                     val currentTaps = ArrayList(tapTimestamps)
                     android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
@@ -99,7 +98,7 @@ class TapDetector(private val listener: GestureDetectionListener) : SensorEventL
                                 listener.onGestureDetected(GestureType.DOUBLE_TAP)
                             }
                         }
-                    }, 300)
+                    }, 350)
                 }
             }
         }
