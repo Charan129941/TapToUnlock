@@ -1,0 +1,47 @@
+# Rust & Cargo build artifacts
+/target/
+**/target/
+Cargo.lock
+
+# Node / Web / Tauri dependencies & logs
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+dist/
+**/dist/
+
+# IDE & Editor configurations
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Mobile build outputs (keep source code!)
+*.apk
+*.aab
+*.dex
+*.class
+*.so
+*.dylib
+*.dll
+!installers/*.exe
+!installers/*.msi
+!installers/*.dll
+mobile/android/.gradle/
+mobile/android/build/
+mobile/android/app/build/
+mobile/ios/build/
+mobile/ios/DerivedData/
+
+# Environment & Secret files
+.env
+*.pem
+*.key
+*.cert

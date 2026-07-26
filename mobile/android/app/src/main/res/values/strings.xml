@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OpenTapUnlock</string>
+    <string name="service_name">OpenTap Biometric Background Service</string>
+    <string name="service_notif_title">OpenTap Background Monitoring Active</string>
+    <string name="service_notif_text">Listening for Triple Tap gestures while screen is unlocked.</string>
+</resources>

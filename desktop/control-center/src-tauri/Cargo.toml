@@ -1,0 +1,30 @@
+[package]
+name = "opentap-control-center-backend"
+version = "1.0.0"
+edition = "2021"
+authors = ["OpenTapUnlock Engineering Team <security@opentapunlock.org>"]
+description = "Tauri Rust backend for OpenTap Control Center with low-power IPC to opentapd daemon"
+license = "Apache-2.0 OR MIT"
+
+[build-dependencies]
+tauri-build = { version = "1.5", features = [] }
+
+[dependencies]
+tauri = { version = "1.5", features = [
+    "system-tray",
+    "shell-open",
+    "dialog-all",
+    "fs-all",
+    "window-all",
+    "custom-protocol"
+] }
+opentap-core = { path = "../../../core" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.37", features = ["full"] }
+chrono = "0.4"
+thiserror = "1.0"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

@@ -1,0 +1,16 @@
+[workspace]
+members = [
+    "core",
+    "desktop/daemon",
+    "mobile/android/opentap-jni",
+    "mobile/ios/opentap-ffi",
+    "desktop/control-center/src-tauri",
+    "tests/e2e-matrix"
+]
+resolver = "2"
+
+[workspace.package]
+version = "1.0.0"
+edition = "2021"
+authors = ["OpenTapUnlock Engineering Team <security@opentapunlock.org>"]
+license = "Apache-2.0 OR MIT"

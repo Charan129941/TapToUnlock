@@ -1,0 +1,25 @@
+[package]
+name = "macos-auth-plugin"
+version = "0.1.0"
+edition = "2021"
+authors = ["OpenTapUnlock Engineering Team <security@opentapunlock.org>"]
+description = "Zero-trust macOS Authorization Plugin (.bundle) and Keychain Helper for loginwindow and screensaver unlock"
+license = "Apache-2.0 OR MIT"
+
+[lib]
+name = "OpenTapAuthPlugin"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+libc = "0.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+
+# Target macOS Security and CoreFoundation libraries
+[target.'cfg(target_os = "macos")'.dependencies]
+core-foundation = "0.9"
+security-framework = "2.11"
+
+[dev-dependencies]
+tempfile = "3.10"

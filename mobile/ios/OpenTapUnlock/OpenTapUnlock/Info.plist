@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIdentifier</key>
+    <string>org.opentapunlock.ios</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>OpenTapUnlock</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    
+    <!-- Zero-Drain Hardware Motion Co-Processor / Back Tap Integration -->
+    <key>NSFaceIDUsageDescription</key>
+    <string>OpenTapUnlock uses Face ID / Touch ID to securely confirm your identity when tapping to unlock your laptop.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>OpenTapUnlock uses your camera to scan the Out-Of-Band QR code displayed on your laptop terminal.</string>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>OpenTapUnlock uses Bluetooth Low Energy (BLE) to securely transmit unlock payloads when Wi-Fi is unreachable.</string>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>OpenTapUnlock uses your local Wi-Fi network to instantly unlock your computer over mTLS.</string>
+    
+    <!-- Custom URL Scheme for Apple Shortcuts / Back Tap Automation -->
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>org.opentapunlock.url</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>opentap</string>
+            </array>
+        </dict>
+    </array>
+    
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <false/>
+    </dict>
+    <key>UILaunchScreen</key>
+    <dict/>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+    </array>
+</dict>
+</plist>

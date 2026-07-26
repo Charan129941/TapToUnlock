@@ -1,0 +1,15 @@
+[package]
+name = "e2e-matrix"
+version = "1.0.0"
+edition = "2021"
+authors = ["OpenTapUnlock Engineering Team <security@opentapunlock.org>"]
+description = "Comprehensive 100-case E2E integration and stress test matrix for OpenTapUnlock"
+license = "Apache-2.0 OR MIT"
+
+[dependencies]
+opentap-core = { path = "../../core" }
+serde_json = "1.0"
+tokio = { version = "1.37", features = ["full"] }
+chrono = "0.4"
+hex = "0.4"
+rand = "0.8"

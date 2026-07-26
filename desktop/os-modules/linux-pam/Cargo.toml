@@ -1,0 +1,24 @@
+[package]
+name = "pam-opentap"
+version = "0.1.0"
+edition = "2021"
+authors = ["OpenTapUnlock Engineering Team <security@opentapunlock.org>"]
+description = "Zero-trust Pluggable Authentication Module (PAM) for Linux desktop and sudo unlocking"
+license = "Apache-2.0 OR MIT"
+
+[lib]
+name = "pam_opentap"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+libc = "0.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+
+# Target Linux syslog / systemd journal logging
+[target.'cfg(target_os = "linux")'.dependencies]
+syslog = "6.1"
+
+[dev-dependencies]
+tempfile = "3.10"
