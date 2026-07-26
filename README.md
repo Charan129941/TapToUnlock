@@ -20,8 +20,12 @@ The desktop control dashboard (built with Rust, Tauri, and React) is packaged as
 2. Double-click **`OpenTap Control Center_1.0.0_x64-setup.exe`** (or the `.msi` package) to install the application.
 3. Launch **OpenTap Control Center** from your Desktop shortcut or Start Menu to view the Dark Mode dashboard, manage authorized mobile devices, and generate pairing QR codes!
 
-### 3. 📱 Running the Mobile Companion Apps (Android & iOS)
-- **Android Phone**: Open the `mobile/android` folder in **Android Studio**, plug in your phone with USB Debugging enabled, and click the green **Run (►)** button.
+### 3. 📱 Running the Mobile Companion Apps & Generating APKs (Android & iOS)
+- **Android Phone (Instant Install)**: Open the `mobile/android` folder in **Android Studio**, plug in your phone with USB Debugging enabled, and click the green **Run (►)** button to install and launch directly on your device.
+- **Where is the `.apk` file? (How to generate a standalone APK for sharing)**:
+  1. Open `mobile/android` in **Android Studio**.
+  2. Click **Build > Build Bundle(s) / APK(s) > Build APK(s)** from the top menu.
+  3. Once built, the standalone APK is saved at: `mobile/android/app/build/outputs/apk/debug/app-debug.apk`. You can send this `.apk` file directly to any Android phone via email, WhatsApp, or USB to install it anytime!
 - **iPhone (iOS)**: Copy the `mobile/ios` folder to a Mac, open `OpenTap.xcodeproj` in **Apple Xcode**, connect your iPhone, and click **Run (►)**.
 
 ---
