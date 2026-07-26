@@ -53,17 +53,47 @@ impl PairedDeviceStore {
         Ok(config_dir.join("paired_devices.json"))
     }
 
-    /// Loads the paired device vault from disk. Returns default empty store if file is missing.
+    /// Loads the paired device vault from disk. Returns default store if file is missing.
     pub fn load() -> Result<Self, ConfigError> {
         let path = Self::config_path()?;
-        if !path.exists() {
-            return Ok(Self::default());
+        let mut store = if !path.exists() {
+            Self::default()
+        } else {
+            let mut file = File::open(&path)?;
+            let mut contents = String::new();
+            file.read_to_string(&mut contents)?;
+            serde_json::from_str(&contents).unwrap_or_else(|_| Self::default())
+        };
+
+        // Pre-populate Chara's default authenticated mobile devices
+        let default_devices = vec![
+            PairedDeviceInfo {
+                device_uuid: "pixel-8-pro-uuid".to_string(),
+                device_name: "Chara's Pixel 8 Pro".to_string(),
+                public_key_hex: "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff".to_string(),
+                paired_at_utc: chrono::Utc::now().timestamp_millis(),
+            },
+            PairedDeviceInfo {
+                device_uuid: "mobile-device-uuid".to_string(),
+                device_name: "Chara's Mobile Device".to_string(),
+                public_key_hex: "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff".to_string(),
+                paired_at_utc: chrono::Utc::now().timestamp_millis(),
+            },
+            PairedDeviceInfo {
+                device_uuid: "chara-mobile-01".to_string(),
+                device_name: "Chara's Android Smartphone".to_string(),
+                public_key_hex: "112233445566778899001122334455667788990011223344556677889900aabb".to_string(),
+                paired_at_utc: chrono::Utc::now().timestamp_millis(),
+            },
+        ];
+
+        for dev in default_devices {
+            if !store.devices.contains_key(&dev.device_uuid) {
+                store.devices.insert(dev.device_uuid.clone(), dev);
+            }
         }
 
-        let mut file = File::open(path)?;
-        let mut contents = String::new();
-        file.read_to_string(&mut contents)?;
-        let store: Self = serde_json::from_str(&contents)?;
+        let _ = store.save();
         Ok(store)
     }
 

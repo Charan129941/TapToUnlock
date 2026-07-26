@@ -20,8 +20,8 @@ class TapDetector(private val listener: GestureDetectionListener) : SensorEventL
         private const val TAG = "TapDetector"
         private const val TAP_THRESHOLD_MS2 = 3.2f // Sensitive threshold for comfortable average finger taps
         private const val LONG_TAP_THRESHOLD_MS2 = 2.8f
-        private const val MIN_TAP_INTERVAL_MS = 100L // Debounce window
-        private const val MAX_TAP_WINDOW_MS = 1200L // Widen window for relaxed multi-taps
+        private const val MIN_TAP_INTERVAL_MS = 260L // Solid 260ms debounce prevents single tap mechanical bounce!
+        private const val MAX_TAP_WINDOW_MS = 1300L // Widen window for relaxed multi-taps
     }
 
     private val tapTimestamps = mutableListOf<Long>()
@@ -82,7 +82,7 @@ class TapDetector(private val listener: GestureDetectionListener) : SensorEventL
             }
             2 -> {
                 val interval = tapTimestamps[1] - tapTimestamps[0]
-                if (interval > 600) {
+                if (interval > 750) {
                     Log.i(TAG, "DSP DETECTED GESTURE: Two Long Taps!")
                     tapTimestamps.clear()
                     listener.onGestureDetected(GestureType.TWO_LONG_TAPS)
@@ -98,7 +98,7 @@ class TapDetector(private val listener: GestureDetectionListener) : SensorEventL
                                 listener.onGestureDetected(GestureType.DOUBLE_TAP)
                             }
                         }
-                    }, 350)
+                    }, 500)
                 }
             }
         }
