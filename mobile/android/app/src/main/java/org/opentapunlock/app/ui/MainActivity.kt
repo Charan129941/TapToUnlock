@@ -320,6 +320,10 @@ fun GestureCustomizationScreen() {
 @Composable
 fun PairingScreen() {
     val context = LocalContext.current
+    val prefs = context.getSharedPreferences("opentap_vault", Context.MODE_PRIVATE)
+    var isAlreadyPaired by remember {
+        mutableStateOf(prefs.getString("target_pc_id", null) != null && prefs.getString("target_pc_id", "") != "Not Paired Yet")
+    }
     var hasCameraPermission by remember {
         mutableStateOf(
             androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED
@@ -338,116 +342,158 @@ fun PairingScreen() {
         Text("Pair with Desktop Workstation", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 20.sp)
         Text("Run 'sudo opentapd --pair' on your laptop and scan the terminal QR code:", color = Color.Gray, fontSize = 14.sp)
 
-        Card(
-            modifier = Modifier.fillMaxWidth().height(280.dp).padding(top = 6.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E)),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            if (hasCameraPermission) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
-                    androidx.compose.ui.viewinterop.AndroidView(
-                        factory = { ctx ->
-                            val previewView = androidx.camera.view.PreviewView(ctx)
-                            val cameraProviderFuture = androidx.camera.lifecycle.ProcessCameraProvider.getInstance(ctx)
-                            cameraProviderFuture.addListener({
-                                try {
-                                    val cameraProvider = cameraProviderFuture.get()
-                                    val preview = androidx.camera.core.Preview.Builder().build().also {
-                                        it.setSurfaceProvider(previewView.surfaceProvider)
-                                    }
-                                    val cameraSelector = androidx.camera.core.CameraSelector.DEFAULT_BACK_CAMERA
-                                    
-                                    val imageAnalysis = androidx.camera.core.ImageAnalysis.Builder()
-                                        .setBackpressureStrategy(androidx.camera.core.ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                                        .build()
-                                        
-                                    val scanner = com.google.mlkit.vision.barcode.BarcodeScanning.getClient()
-                                    imageAnalysis.setAnalyzer(androidx.core.content.ContextCompat.getMainExecutor(ctx)) { imageProxy ->
-                                        val mediaImage = imageProxy.image
-                                        if (mediaImage != null) {
-                                            val image = com.google.mlkit.vision.common.InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
-                                            scanner.process(image)
-                                                .addOnSuccessListener { barcodes ->
-                                                    for (barcode in barcodes) {
-                                                        barcode.rawValue?.let { qrContent ->
-                                                            if (qrContent.isNotEmpty()) {
-                                                                val prefs = ctx.getSharedPreferences("opentap_vault", Context.MODE_PRIVATE).edit()
-                                                                prefs.putString("target_pc_id", "Scanned-Workstation-PC")
-                                                                prefs.putString("host_ip", "10.150.10.41")
-                                                                prefs.putInt("tls_port", 8765)
-                                                                prefs.putString("private_key_hex", "112233445566778899001122334455667788990011223344556677889900aabb")
-                                                                prefs.apply()
-                                                                Toast.makeText(ctx, "✅ QR Code Scanned! PC Paired Automatically.", Toast.LENGTH_LONG).show()
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                                .addOnCompleteListener { imageProxy.close() }
-                                        } else {
-                                            imageProxy.close()
-                                        }
-                                    }
+        if (isAlreadyPaired) {
+            val pairedPc = prefs.getString("target_pc_id", "Chara-Workstation-Win11") ?: "Chara-Workstation-Win11"
+            val hostIp = prefs.getString("host_ip", "10.150.10.41") ?: "10.150.10.41"
+            val port = prefs.getInt("tls_port", 8765)
+            val mobileUuid = prefs.getString("mobile_uuid", "pixel-8-pro-uuid") ?: "pixel-8-pro-uuid"
 
-                                    cameraProvider.unbindAll()
-                                    cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, imageAnalysis)
-                                } catch (e: Throwable) {
-                                    android.util.Log.e("QrScanner", "Camera init error: ${e.message}")
-                                }
-                            }, androidx.core.content.ContextCompat.getMainExecutor(ctx))
-                            previewView
-                        },
-                        modifier = Modifier.fillMaxSize()
-                    )
-                    Text(
-                        "🔍 Align Terminal QR Code", 
-                        color = Color(0xFF00E676), 
-                        fontWeight = FontWeight.Bold, 
-                        fontSize = 13.sp,
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(12.dp)
-                            .background(Color(0xCC000000), RoundedCornerShape(8.dp))
-                            .padding(horizontal = 14.dp, vertical = 6.dp)
-                    )
-                }
-            } else {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1B5E20)),
+                shape = RoundedCornerShape(16.dp)
+            ) {
                 Column(
-                    modifier = Modifier.fillMaxSize().padding(20.dp),
+                    modifier = Modifier.padding(24.dp).fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text("📷 Camera Permission Required", color = Color.LightGray, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text("We need camera access to scan your laptop's terminal QR code.", color = Color.Gray, fontSize = 13.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                    Spacer(modifier = Modifier.height(18.dp))
-                    Button(
-                        onClick = { launcher.launch(android.Manifest.permission.CAMERA) },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E676))
-                    ) {
-                        Text("Grant Camera Permission", color = Color.Black, fontWeight = FontWeight.Bold)
+                    Text("🟢 LAPTOP CONNECTED & AUTHORIZED", color = Color(0xFF00E676), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text("Your phone is actively paired with your workstation. Camera scanner is turned OFF to save battery.", color = Color.White, fontSize = 13.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF121212)), shape = RoundedCornerShape(10.dp)) {
+                        Column(modifier = Modifier.padding(14.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("💻 Target PC: $pairedPc", color = Color(0xFF2979FF), fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            Text("🛜 Host IP: $hostIp : $port", color = Color.LightGray, fontSize = 14.sp)
+                            Text("📱 Mobile ID: $mobileUuid", color = Color.Gray, fontSize = 13.sp)
+                        }
                     }
                 }
             }
-        }
 
-        Button(
-            onClick = {
-                val keysJson = OpentapJni.generateKeyPair()
-                val prefs = context.getSharedPreferences("opentap_vault", Context.MODE_PRIVATE).edit()
-                prefs.putString("target_pc_id", "Chara-Workstation-Win11")
-                prefs.putString("host_ip", "10.150.10.41")
-                prefs.putInt("tls_port", 8765)
-                prefs.putString("mobile_uuid", "pixel-8-pro-uuid")
-                prefs.putString("private_key_hex", "112233445566778899001122334455667788990011223344556677889900aabb")
-                prefs.apply()
+            Spacer(modifier = Modifier.height(10.dp))
 
-                Toast.makeText(context, "Pairing Saved! Phone is now authorized.", Toast.LENGTH_LONG).show()
-            },
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2979FF)),
-            modifier = Modifier.fillMaxWidth().height(50.dp)
-        ) {
-            Text("Simulate QR Handshake & Save Keys", color = Color.White, fontWeight = FontWeight.Bold)
+            Button(
+                onClick = { isAlreadyPaired = false },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF333333)),
+                modifier = Modifier.fillMaxWidth().height(50.dp)
+            ) {
+                Text("🔄 Unpair / Scan Different PC", color = Color.White, fontWeight = FontWeight.Bold)
+            }
+        } else {
+            Card(
+                modifier = Modifier.fillMaxWidth().height(280.dp).padding(top = 6.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E)),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                if (hasCameraPermission) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+                        androidx.compose.ui.viewinterop.AndroidView(
+                            factory = { ctx ->
+                                val previewView = androidx.camera.view.PreviewView(ctx)
+                                val cameraProviderFuture = androidx.camera.lifecycle.ProcessCameraProvider.getInstance(ctx)
+                                cameraProviderFuture.addListener({
+                                    try {
+                                        val cameraProvider = cameraProviderFuture.get()
+                                        val preview = androidx.camera.core.Preview.Builder().build().also {
+                                            it.setSurfaceProvider(previewView.surfaceProvider)
+                                        }
+                                        val cameraSelector = androidx.camera.core.CameraSelector.DEFAULT_BACK_CAMERA
+                                        
+                                        val imageAnalysis = androidx.camera.core.ImageAnalysis.Builder()
+                                            .setBackpressureStrategy(androidx.camera.core.ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                                            .build()
+                                            
+                                        val scanner = com.google.mlkit.vision.barcode.BarcodeScanning.getClient()
+                                        imageAnalysis.setAnalyzer(androidx.core.content.ContextCompat.getMainExecutor(ctx)) { imageProxy ->
+                                            val mediaImage = imageProxy.image
+                                            if (mediaImage != null) {
+                                                val image = com.google.mlkit.vision.common.InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+                                                scanner.process(image)
+                                                    .addOnSuccessListener { barcodes ->
+                                                        for (barcode in barcodes) {
+                                                            barcode.rawValue?.let { qrContent ->
+                                                                if (qrContent.isNotEmpty()) {
+                                                                    val editPrefs = ctx.getSharedPreferences("opentap_vault", Context.MODE_PRIVATE).edit()
+                                                                    editPrefs.putString("target_pc_id", "Scanned-Workstation-PC")
+                                                                    editPrefs.putString("host_ip", "10.150.10.41")
+                                                                    editPrefs.putInt("tls_port", 8765)
+                                                                    editPrefs.putString("private_key_hex", "112233445566778899001122334455667788990011223344556677889900aabb")
+                                                                    editPrefs.apply()
+                                                                    isAlreadyPaired = true
+                                                                    Toast.makeText(ctx, "✅ QR Code Scanned! PC Paired Automatically.", Toast.LENGTH_LONG).show()
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                    .addOnCompleteListener { imageProxy.close() }
+                                            } else {
+                                                imageProxy.close()
+                                            }
+                                        }
+
+                                        cameraProvider.unbindAll()
+                                        cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, imageAnalysis)
+                                    } catch (e: Throwable) {
+                                        android.util.Log.e("QrScanner", "Camera init error: ${e.message}")
+                                    }
+                                }, androidx.core.content.ContextCompat.getMainExecutor(ctx))
+                                previewView
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                        Text(
+                            "🔍 Align Terminal QR Code", 
+                            color = Color(0xFF00E676), 
+                            fontWeight = FontWeight.Bold, 
+                            fontSize = 13.sp,
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(12.dp)
+                                .background(Color(0xCC000000), RoundedCornerShape(8.dp))
+                                .padding(horizontal = 14.dp, vertical = 6.dp)
+                        )
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier.fillMaxSize().padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text("📷 Camera Permission Required", color = Color.LightGray, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text("We need camera access to scan your laptop's terminal QR code.", color = Color.Gray, fontSize = 13.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        Spacer(modifier = Modifier.height(18.dp))
+                        Button(
+                            onClick = { launcher.launch(android.Manifest.permission.CAMERA) },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E676))
+                        ) {
+                            Text("Grant Camera Permission", color = Color.Black, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            Button(
+                onClick = {
+                    val keysJson = OpentapJni.generateKeyPair()
+                    val editPrefs = context.getSharedPreferences("opentap_vault", Context.MODE_PRIVATE).edit()
+                    editPrefs.putString("target_pc_id", "Chara-Workstation-Win11")
+                    editPrefs.putString("host_ip", "10.150.10.41")
+                    editPrefs.putInt("tls_port", 8765)
+                    editPrefs.putString("mobile_uuid", "pixel-8-pro-uuid")
+                    editPrefs.putString("private_key_hex", "112233445566778899001122334455667788990011223344556677889900aabb")
+                    editPrefs.apply()
+                    isAlreadyPaired = true
+
+                    Toast.makeText(context, "Pairing Saved! Phone is now authorized.", Toast.LENGTH_LONG).show()
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2979FF)),
+                modifier = Modifier.fillMaxWidth().height(50.dp)
+            ) {
+                Text("Simulate QR Handshake & Save Keys", color = Color.White, fontWeight = FontWeight.Bold)
+            }
         }
     }
 }
