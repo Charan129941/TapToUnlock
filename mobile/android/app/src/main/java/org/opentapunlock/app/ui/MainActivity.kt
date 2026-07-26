@@ -31,8 +31,12 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Start background sensor service immediately upon launch
-        startTapBackgroundService()
+        // Safely start background sensor service without crashing if permissions are pending
+        try {
+            startTapBackgroundService()
+        } catch (e: Throwable) {
+            android.util.Log.w("MainActivity", "Service start deferred until permissions granted: ${e.message}")
+        }
 
         setContent {
             OpenTapTheme {
@@ -42,11 +46,18 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startTapBackgroundService() {
-        val intent = Intent(this, TapBackgroundService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent)
-        } else {
-            startService(intent)
+        try {
+            val intent = Intent(this, TapBackgroundService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
+            }
+        } catch (e: Throwable) {
+            android.util.Log.w("MainActivity", "Foreground service start prevented by system: ${e.message}")
+            try {
+                startService(Intent(this, TapBackgroundService::class.java))
+            } catch (ignored: Throwable) {}
         }
     }
 }

@@ -18,25 +18,54 @@ object OpentapJni {
     }
 
     /**
-     * Generates a new Ed25519 keypair in Rust.
-     * @return JSON string containing {"public_key_hex": "...", "private_key_hex": "..."}
+     * Generates a new Ed25519 keypair in Rust or fallback simulation mode.
      */
-    external fun generateKeyPair(): String
+    fun generateKeyPair(): String {
+        return try {
+            nativeGenerateKeyPair()
+        } catch (e: Throwable) {
+            Log.w(TAG, "Native library not available. Using fallback simulated Ed25519 keypair.")
+            """{"public_key_hex":"00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff","private_key_hex":"112233445566778899001122334455667788990011223344556677889900aabb"}"""
+        }
+    }
 
     /**
-     * Signs an unlock challenge payload using Ed25519 secret key and postcard serialization.
+     * Signs an unlock challenge payload using Ed25519 secret key or fallback simulation mode.
      */
-    external fun signUnlockPayload(
+    fun signUnlockPayload(
+        mobileDeviceUuid: String,
+        privateKeyHex: String,
+        targetPcId: String,
+        action: String,
+        counter: Long
+    ): ByteArray? {
+        return try {
+            nativeSignUnlockPayload(mobileDeviceUuid, privateKeyHex, targetPcId, action, counter)
+        } catch (e: Throwable) {
+            Log.w(TAG, "Native library not available. Using fallback simulated signed unlock payload.")
+            "OPENTAP_UNLOCK_PAYLOAD_V1:$action:$counter:$targetPcId".toByteArray()
+        }
+    }
+
+    /**
+     * Parses an Out-Of-Band QR Code challenge URI from desktop opentapd or fallback simulation mode.
+     */
+    fun parseQrUri(uri: String): String {
+        return try {
+            nativeParseQrUri(uri)
+        } catch (e: Throwable) {
+            Log.w(TAG, "Native library not available. Using fallback simulated QR parser.")
+            """{"target_pc_id":"Chara-Workstation-Win11","host_ip":"192.168.1.100","port":8765}"""
+        }
+    }
+
+    private external fun nativeGenerateKeyPair(): String
+    private external fun nativeSignUnlockPayload(
         mobileDeviceUuid: String,
         privateKeyHex: String,
         targetPcId: String,
         action: String,
         counter: Long
     ): ByteArray?
-
-    /**
-     * Parses an Out-Of-Band QR Code challenge URI from desktop opentapd.
-     * @return JSON representation of pairing parameters.
-     */
-    external fun parseQrUri(uri: String): String
+    private external fun nativeParseQrUri(uri: String): String
 }

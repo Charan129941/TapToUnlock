@@ -57,10 +57,18 @@ class TapBackgroundService : Service(), GestureDetectionListener {
         gestureConfigManager = GestureConfigManager(this)
         biometricAuthManager = BiometricAuthManager(this)
 
-        createNotificationChannel()
-        startForeground(NOTIFICATION_ID, buildForegroundNotification())
+        try {
+            createNotificationChannel()
+            startForeground(NOTIFICATION_ID, buildForegroundNotification())
+        } catch (e: Throwable) {
+            Log.w(TAG, "startForeground deferred or permission pending: ${e.message}")
+        }
 
-        tapDetector.register(sensorManager)
+        try {
+            tapDetector.register(sensorManager)
+        } catch (e: Throwable) {
+            Log.w(TAG, "Sensor registration deferred: ${e.message}")
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
