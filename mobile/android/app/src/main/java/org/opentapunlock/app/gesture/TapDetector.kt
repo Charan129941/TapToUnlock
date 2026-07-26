@@ -18,14 +18,25 @@ interface GestureDetectionListener {
 class TapDetector(private val listener: GestureDetectionListener) : SensorEventListener {
     companion object {
         private const val TAG = "TapDetector"
-        private const val TAP_THRESHOLD_MS2 = 3.2f // Sensitive threshold for comfortable average finger taps
-        private const val LONG_TAP_THRESHOLD_MS2 = 2.8f
-        private const val MIN_TAP_INTERVAL_MS = 260L // Solid 260ms debounce prevents single tap mechanical bounce!
-        private const val MAX_TAP_WINDOW_MS = 1300L // Widen window for relaxed multi-taps
+        // Increased threshold: 5.2 m/s² prevents false triggers from holding, tilting, or moving the phone!
+        private const val TAP_THRESHOLD_MS2 = 5.2f
+        // Jerk threshold: requires a sharp mechanical collision (finger tap impulse) rather than slow waving/shaking
+        private const val JERK_THRESHOLD_MS2 = 4.5f
+        private const val MIN_TAP_INTERVAL_MS = 280L // 280ms debounce completely blocks mechanical single-tap aftershock
+        private const val MAX_TAP_WINDOW_MS = 1400L // Widen window for relaxed multi-taps
     }
 
     private val tapTimestamps = mutableListOf<Long>()
     private var lastTapTime = 0L
+
+    // DSP High-Pass Gravity Filter State
+    private var gravityX = 0f
+    private var gravityY = 0f
+    private var gravityZ = 0f
+    private var lastDynX = 0f
+    private var lastDynY = 0f
+    private var lastDynZ = 0f
+    private var filterInitialized = false
 
     fun register(sensorManager: SensorManager): Boolean {
         val sensor = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
@@ -53,12 +64,42 @@ class TapDetector(private val listener: GestureDetectionListener) : SensorEventL
         val y = event.values[1]
         val z = event.values[2]
 
-        val magnitude = sqrt((x * x + y * y + z * z).toDouble()).toFloat()
+        if (!filterInitialized) {
+            gravityX = x
+            gravityY = y
+            gravityZ = z
+            filterInitialized = true
+            return
+        }
+
+        // 1. High-Pass Filter: Isolate pure dynamic acceleration by filtering out Earth's gravity & slow tilting (alpha = 0.85)
+        val alpha = 0.85f
+        gravityX = alpha * gravityX + (1 - alpha) * x
+        gravityY = alpha * gravityY + (1 - alpha) * y
+        gravityZ = alpha * gravityZ + (1 - alpha) * z
+
+        val dynX = x - gravityX
+        val dynY = y - gravityY
+        val dynZ = z - gravityZ
+
+        // 2. Jerk Calculation (Rate of change of acceleration): Distinguishes sharp mechanical tap impacts from waving/shaking
+        val deltaX = dynX - lastDynX
+        val deltaY = dynY - lastDynY
+        val deltaZ = dynZ - lastDynZ
+        
+        lastDynX = dynX
+        lastDynY = dynY
+        lastDynZ = dynZ
+
+        val dynMagnitude = sqrt((dynX * dynX + dynY * dynY + dynZ * dynZ).toDouble()).toFloat()
+        val jerk = sqrt((deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ).toDouble()).toFloat()
         val now = System.currentTimeMillis()
 
-        if (magnitude >= TAP_THRESHOLD_MS2) {
+        // 3. Dual-Gate Verification: Must exceed BOTH dynamic magnitude AND mechanical jerk threshold!
+        if (dynMagnitude >= TAP_THRESHOLD_MS2 && jerk >= JERK_THRESHOLD_MS2) {
             if (now - lastTapTime > MIN_TAP_INTERVAL_MS) {
                 lastTapTime = now
+                Log.i(TAG, "DSP Verified Tap Impulse! (Mag: ${dynMagnitude}, Jerk: ${jerk})")
                 registerTapImpulse(now)
             }
         }
