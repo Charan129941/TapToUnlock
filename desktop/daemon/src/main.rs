@@ -86,6 +86,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
+    // Spawn Wi-Fi Zero-Trust Unlock Server (Port 8765)
+    let coordinator = network::NetworkCoordinator::new(store.clone(), state_machine.clone());
+    tokio::spawn(async move {
+        match tokio::net::TcpListener::bind("0.0.0.0:8765").await {
+            Ok(listener) => {
+                info!("Wi-Fi Zero-Trust Unlock Server actively listening on 0.0.0.0:8765");
+                loop {
+                    if let Ok((mut socket, peer)) = listener.accept().await {
+                        let coord = coordinator.clone();
+                        tokio::spawn(async move {
+                            use tokio::io::AsyncReadExt;
+                            let mut buf = vec![0u8; 4096];
+                            if let Ok(n) = socket.read(&mut buf).await {
+                                if n > 0 {
+                                    info!("Received {} bytes over Wi-Fi from peer: {}", n, peer);
+                                    let _ = coord.handle_incoming_packet(&buf[..n]);
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+            Err(e) => error!("Failed to bind Wi-Fi unlock server on port 8765: {:?}", e),
+        }
+    });
+
     info!("Daemon running actively! Waiting for OS authentication challenges or mobile Triple Taps.");
     info!("Press Ctrl+C to gracefully shutdown daemon.");
 
