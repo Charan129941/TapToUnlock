@@ -282,7 +282,7 @@ fun PairingScreen() {
                                                             if (qrContent.isNotEmpty()) {
                                                                 val prefs = ctx.getSharedPreferences("opentap_vault", Context.MODE_PRIVATE).edit()
                                                                 prefs.putString("target_pc_id", "Scanned-Workstation-PC")
-                                                                prefs.putString("host_ip", "192.168.1.100")
+                                                                prefs.putString("host_ip", "10.150.10.41")
                                                                 prefs.putInt("tls_port", 8765)
                                                                 prefs.putString("private_key_hex", "112233445566778899001122334455667788990011223344556677889900aabb")
                                                                 prefs.apply()
@@ -344,7 +344,7 @@ fun PairingScreen() {
                 val keysJson = OpentapJni.generateKeyPair()
                 val prefs = context.getSharedPreferences("opentap_vault", Context.MODE_PRIVATE).edit()
                 prefs.putString("target_pc_id", "Chara-Workstation-Win11")
-                prefs.putString("host_ip", "192.168.1.100")
+                prefs.putString("host_ip", "10.150.10.41")
                 prefs.putInt("tls_port", 8765)
                 prefs.putString("mobile_uuid", "pixel-8-pro-uuid")
                 prefs.putString("private_key_hex", "112233445566778899001122334455667788990011223344556677889900aabb")

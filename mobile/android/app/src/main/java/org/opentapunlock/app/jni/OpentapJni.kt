@@ -55,7 +55,7 @@ object OpentapJni {
             nativeParseQrUri(uri)
         } catch (e: Throwable) {
             Log.w(TAG, "Native library not available. Using fallback simulated QR parser.")
-            """{"target_pc_id":"Chara-Workstation-Win11","host_ip":"192.168.1.100","port":8765}"""
+            """{"target_pc_id":"Chara-Workstation-Win11","host_ip":"10.150.10.41","port":8765}"""
         }
     }
 

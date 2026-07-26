@@ -113,7 +113,7 @@ class TapBackgroundService : Service(), GestureDetectionListener {
 
     private suspend fun executeWirelessCommand(action: GestureAction) {
         val prefs = getSharedPreferences("opentap_vault", Context.MODE_PRIVATE)
-        val hostIp = prefs.getString("host_ip", "192.168.1.100") ?: "192.168.1.100"
+        val hostIp = prefs.getString("host_ip", "10.150.10.41") ?: "10.150.10.41"
         val port = prefs.getInt("tls_port", 8765)
         val targetPcId = prefs.getString("target_pc_id", "chara") ?: "chara"
         val mobileUuid = prefs.getString("mobile_uuid", "mobile-device-uuid") ?: "mobile-device-uuid"
