@@ -9,9 +9,10 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- Foreground Service Sensor Monitoring for Background Tap Detection -->
+    <!-- Foreground Service Monitoring for Background Tap Detection & Bluetooth Connection -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SENSORS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
 
     <!-- BLE & Network Permissions for Desktop Transmission -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
@@ -42,12 +43,14 @@
             </intent-filter>
         </activity>
 
-        <!-- Continuous Background Accelerometer Sensor Service -->
+        <!-- Continuous Background Accelerometer Sensor & Bluetooth Service -->
         <service
             android:name=".service.TapBackgroundService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="sensors" />
+            android:foregroundServiceType="specialUse|connectedDevice">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="biometric_tap_unlock_monitoring"/>
+        </service>
 
     </application>
 </manifest>
